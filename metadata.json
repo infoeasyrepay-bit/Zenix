@@ -1,0 +1,6 @@
+{
+  "name": "Zenix",
+  "description": "A streaming platform featuring real-time adaptive video playback, multi-profile management, and an AI-powered recommendation engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

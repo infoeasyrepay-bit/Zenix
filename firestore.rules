@@ -1,0 +1,252 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserAccount(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.displayName is string &&
+             data.displayName.size() >= 1 &&
+             data.displayName.size() <= 80 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 160)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidViewerProfile(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.name is string &&
+             data.name.size() >= 1 &&
+             data.name.size() <= 24 &&
+             data.avatarId is string &&
+             data.avatarId.size() >= 1 &&
+             data.avatarId.size() <= 32 &&
+             data.maturityLevel in ['ALL', 'KIDS'] &&
+             data.preferredGenres is list &&
+             data.preferredGenres.size() <= 8 &&
+             (data.preferredGenres.size() == 0 || data.preferredGenres[0] is string) &&
+             data.autoplayNext is bool &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidWatchlistItem(data, userId, profileId, contentId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.profileId is string &&
+             data.profileId == profileId &&
+             isValidId(data.profileId) &&
+             data.contentId is string &&
+             data.contentId == contentId &&
+             isValidId(data.contentId) &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 120 &&
+             data.genre is string &&
+             data.genre.size() >= 1 &&
+             data.genre.size() <= 40 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidWatchHistoryEntry(data, userId, profileId, contentId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.profileId is string &&
+             data.profileId == profileId &&
+             isValidId(data.profileId) &&
+             data.contentId is string &&
+             data.contentId == contentId &&
+             isValidId(data.contentId) &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 120 &&
+             data.genre is string &&
+             data.genre.size() >= 1 &&
+             data.genre.size() <= 40 &&
+             data.episodeId is string &&
+             data.episodeId.size() <= 40 &&
+             data.positionMs is int &&
+             data.positionMs >= 0 &&
+             data.durationMs is int &&
+             data.durationMs >= 0 &&
+             data.progressPercent is int &&
+             data.progressPercent >= 0 &&
+             data.progressPercent <= 100 &&
+             data.completed is bool &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidTitleRating(data, userId, profileId, contentId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.profileId is string &&
+             data.profileId == profileId &&
+             isValidId(data.profileId) &&
+             data.contentId is string &&
+             data.contentId == contentId &&
+             isValidId(data.contentId) &&
+             data.sentiment in ['LIKE', 'DISLIKE'] &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'photoUrl', 'createdAt', 'updatedAt']) &&
+                       isValidUserAccount(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserAccount(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoUrl', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /profiles/{profileId} {
+        allow get: if isOwner(userId) && isValidId(profileId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         incoming().keys().hasAll(['userId', 'name', 'avatarId', 'maturityLevel', 'preferredGenres', 'autoplayNext', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'avatarId', 'maturityLevel', 'preferredGenres', 'autoplayNext', 'createdAt', 'updatedAt']) &&
+                         isValidViewerProfile(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(profileId) &&
+                         isValidViewerProfile(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'avatarId', 'maturityLevel', 'preferredGenres', 'autoplayNext', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(profileId);
+
+        match /watchlist/{contentId} {
+          allow get: if isOwner(userId) && isValidId(profileId) && isValidId(contentId);
+          allow list: if isOwner(userId) && isValidId(profileId);
+
+          allow create: if isOwner(userId) &&
+                           isValidId(profileId) &&
+                           isValidId(contentId) &&
+                           incoming().keys().hasAll(['userId', 'profileId', 'contentId', 'title', 'genre', 'createdAt', 'updatedAt']) &&
+                           incoming().keys().hasOnly(['userId', 'profileId', 'contentId', 'title', 'genre', 'createdAt', 'updatedAt']) &&
+                           isValidWatchlistItem(incoming(), userId, profileId, contentId) &&
+                           exists(/databases/$(database)/documents/users/$(userId)/profiles/$(profileId));
+
+          allow update: if isOwner(userId) &&
+                           isValidId(profileId) &&
+                           isValidId(contentId) &&
+                           isValidWatchlistItem(incoming(), userId, profileId, contentId) &&
+                           incoming().userId == existing().userId &&
+                           incoming().profileId == existing().profileId &&
+                           incoming().contentId == existing().contentId &&
+                           incoming().createdAt == existing().createdAt &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'genre', 'updatedAt']);
+
+          allow delete: if isOwner(userId) && isValidId(profileId) && isValidId(contentId);
+        }
+
+        match /watchHistory/{contentId} {
+          allow get: if isOwner(userId) && isValidId(profileId) && isValidId(contentId);
+          allow list: if isOwner(userId) && isValidId(profileId);
+
+          allow create: if isOwner(userId) &&
+                           isValidId(profileId) &&
+                           isValidId(contentId) &&
+                           incoming().keys().hasAll(['userId', 'profileId', 'contentId', 'title', 'genre', 'episodeId', 'positionMs', 'durationMs', 'progressPercent', 'completed', 'createdAt', 'updatedAt']) &&
+                           incoming().keys().hasOnly(['userId', 'profileId', 'contentId', 'title', 'genre', 'episodeId', 'positionMs', 'durationMs', 'progressPercent', 'completed', 'createdAt', 'updatedAt']) &&
+                           isValidWatchHistoryEntry(incoming(), userId, profileId, contentId) &&
+                           exists(/databases/$(database)/documents/users/$(userId)/profiles/$(profileId));
+
+          allow update: if isOwner(userId) &&
+                           isValidId(profileId) &&
+                           isValidId(contentId) &&
+                           isValidWatchHistoryEntry(incoming(), userId, profileId, contentId) &&
+                           incoming().userId == existing().userId &&
+                           incoming().profileId == existing().profileId &&
+                           incoming().contentId == existing().contentId &&
+                           incoming().createdAt == existing().createdAt &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'genre', 'episodeId', 'positionMs', 'durationMs', 'progressPercent', 'completed', 'updatedAt']);
+
+          allow delete: if isOwner(userId) && isValidId(profileId) && isValidId(contentId);
+        }
+
+        match /ratings/{contentId} {
+          allow get: if isOwner(userId) && isValidId(profileId) && isValidId(contentId);
+          allow list: if isOwner(userId) && isValidId(profileId);
+
+          allow create: if isOwner(userId) &&
+                           isValidId(profileId) &&
+                           isValidId(contentId) &&
+                           incoming().keys().hasAll(['userId', 'profileId', 'contentId', 'sentiment', 'createdAt', 'updatedAt']) &&
+                           incoming().keys().hasOnly(['userId', 'profileId', 'contentId', 'sentiment', 'createdAt', 'updatedAt']) &&
+                           isValidTitleRating(incoming(), userId, profileId, contentId) &&
+                           exists(/databases/$(database)/documents/users/$(userId)/profiles/$(profileId));
+
+          allow update: if isOwner(userId) &&
+                           isValidId(profileId) &&
+                           isValidId(contentId) &&
+                           isValidTitleRating(incoming(), userId, profileId, contentId) &&
+                           incoming().userId == existing().userId &&
+                           incoming().profileId == existing().profileId &&
+                           incoming().contentId == existing().contentId &&
+                           incoming().createdAt == existing().createdAt &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['sentiment', 'updatedAt']);
+
+          allow delete: if isOwner(userId) && isValidId(profileId) && isValidId(contentId);
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Zenix</string>
+    <string name="brand_wordmark">ZENIX</string>
+    <string name="brand_tagline">Cinema without limits. Curated in real time.</string>
+    <string name="sign_in_with_google">Continue with Google</string>
+    <string name="whos_watching">Who\u2019s Watching?</string>
+    <string name="add_profile">Add Profile</string>
+    <string name="edit_profile">Edit Profile</string>
+    <string name="manage_profiles">Manage Profiles</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_for_you">For You AI</string>
+    <string name="nav_explore">Explore</string>
+    <string name="nav_profiles">Profiles</string>
+    <string name="play_now">Play</string>
+    <string name="resume_now">Resume</string>
+    <string name="my_list">My List</string>
+    <string name="in_my_list">In My List</string>
+    <string name="skip_intro">Skip Intro</string>
+    <string name="sign_out">Sign Out</string>
+</resources>

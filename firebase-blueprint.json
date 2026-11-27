@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Authenticated Zenix user account root document",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "email": { "type": "string", "description": "User email address" },
+        "photoUrl": { "type": "string", "description": "Profile avatar URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "displayName", "createdAt", "updatedAt"]
+    },
+    "ViewerProfile": {
+      "title": "ViewerProfile",
+      "description": "Individual viewer profile inside a Zenix account",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID" },
+        "name": { "type": "string", "description": "Profile name (1-24 chars)" },
+        "avatarId": { "type": "string", "description": "Preset avatar identifier" },
+        "maturityLevel": { "type": "string", "enum": ["ALL", "KIDS"], "description": "Content maturity filter" },
+        "preferredGenres": { "type": "array", "description": "Up to 8 preferred genre tags" },
+        "autoplayNext": { "type": "boolean", "description": "Autoplay next episode toggle" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "name", "avatarId", "maturityLevel", "preferredGenres", "autoplayNext", "createdAt", "updatedAt"]
+    },
+    "WatchlistItem": {
+      "title": "WatchlistItem",
+      "description": "Title saved to a viewer profile watchlist",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID" },
+        "profileId": { "type": "string", "description": "Parent profile ID" },
+        "contentId": { "type": "string", "description": "Catalog content ID" },
+        "title": { "type": "string", "description": "Title name" },
+        "genre": { "type": "string", "description": "Primary genre" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "profileId", "contentId", "title", "genre", "createdAt", "updatedAt"]
+    },
+    "WatchHistoryEntry": {
+      "title": "WatchHistoryEntry",
+      "description": "Real-time playback resume progress and completion state",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID" },
+        "profileId": { "type": "string", "description": "Parent profile ID" },
+        "contentId": { "type": "string", "description": "Catalog content ID" },
+        "title": { "type": "string", "description": "Title name" },
+        "genre": { "type": "string", "description": "Primary genre" },
+        "episodeId": { "type": "string", "description": "Episode identifier for series or empty string" },
+        "positionMs": { "type": "integer", "description": "Playback position in milliseconds" },
+        "durationMs": { "type": "integer", "description": "Total stream duration in milliseconds" },
+        "progressPercent": { "type": "integer", "description": "Progress percentage 0..100" },
+        "completed": { "type": "boolean", "description": "Whether playback finished" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "profileId", "contentId", "title", "genre", "episodeId", "positionMs", "durationMs", "progressPercent", "completed", "createdAt", "updatedAt"]
+    },
+    "TitleRating": {
+      "title": "TitleRating",
+      "description": "Viewer rating used to feed the Zenix recommendation engine",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID" },
+        "profileId": { "type": "string", "description": "Parent profile ID" },
+        "contentId": { "type": "string", "description": "Catalog content ID" },
+        "sentiment": { "type": "string", "enum": ["LIKE", "DISLIKE"], "description": "Viewer sentiment" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update" }
+      },
+      "required": ["userId", "profileId", "contentId", "sentiment", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Account metadata for the signed-in Google user"
+    },
+    "/users/{userId}/profiles/{profileId}": {
+      "schema": { "$ref": "#/entities/ViewerProfile" },
+      "description": "Multi-profile viewer configurations isolated per user"
+    },
+    "/users/{userId}/profiles/{profileId}/watchlist/{contentId}": {
+      "schema": { "$ref": "#/entities/WatchlistItem" },
+      "description": "Saved My List items per viewer profile"
+    },
+    "/users/{userId}/profiles/{profileId}/watchHistory/{contentId}": {
+      "schema": { "$ref": "#/entities/WatchHistoryEntry" },
+      "description": "Playback resume positions and watch history per viewer profile"
+    },
+    "/users/{userId}/profiles/{profileId}/ratings/{contentId}": {
+      "schema": { "$ref": "#/entities/TitleRating" },
+      "description": "Like/dislike signals for the recommendation engine per viewer profile"
+    }
+  }
+}
